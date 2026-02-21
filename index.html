@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent-as-a-Proxy Attacks</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f9f7f4;
+      --ink: #1a1612;
+      --ink-light: #5c534a;
+      --ink-xlight: #9c9088;
+      --accent: #b5341a;
+      --accent-soft: #f0e8e4;
+      --rule: #ddd8d2;
+      --code-bg: #f0ede8;
+      --max: 860px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 18px;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(249,247,244,0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--rule);
+    }
+    nav .inner {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 52px;
+    }
+    nav .logo {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 2rem;
+    }
+    nav a {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--ink-light);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    nav a:hover { color: var(--accent); }
+
+    /* ── HERO ── */
+    .hero {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 5rem 2rem 3.5rem;
+      border-bottom: 1px solid var(--rule);
+    }
+    .hero .venue-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1.5rem;
+    }
+    .hero .venue-tag::before {
+      content: '';
+      display: block;
+      width: 24px;
+      height: 1px;
+      background: var(--accent);
+    }
+    h1 {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: clamp(2rem, 4vw, 2.9rem);
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+      margin-bottom: 1.5rem;
+      max-width: 680px;
+    }
+    h1 em {
+      font-style: italic;
+      color: var(--accent);
+    }
+    .authors {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 400;
+      color: var(--ink-light);
+      margin-bottom: 0.4rem;
+    }
+    .affil {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.82rem;
+      color: var(--ink-xlight);
+      margin-bottom: 2.2rem;
+    }
+    .buttons {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 2.5rem;
+    }
+    .btn {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-decoration: none;
+      padding: 0.55rem 1.25rem;
+      border: 1.5px solid var(--ink);
+      color: var(--ink);
+      transition: all 0.18s;
+    }
+    .btn:hover { background: var(--ink); color: var(--bg); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { background: #8f2810; border-color: #8f2810; }
+    .btn.code {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn.code:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+    .tldr {
+      background: var(--accent-soft);
+      border-left: 3px solid var(--accent);
+      padding: 1rem 1.3rem;
+      font-size: 1rem;
+      color: var(--ink);
+      max-width: 640px;
+    }
+    .tldr strong {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+.pgcg-diagram {
+  border: 1px solid var(--rule);
+  background: #fff;
+  padding: 1.5rem 1.5rem 1.25rem;
+  margin: 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.pgcg-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.pgcg-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-xlight);
+  width: 80px;
+  flex-shrink: 0;
+}
+.pgcg-trace {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+}
+.trace-ctx, .trace-adv {
+  padding: 0.45rem 0.65rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  border: 1px solid var(--rule);
+  margin: 2px;
+}
+.trace-ctx {
+  background: var(--code-bg);
+  color: var(--ink-light);
+}
+.trace-adv {
+  background: #fef2ee;
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 500;
+}
+.pgcg-arrows {
+  display: flex;
+  align-items: flex-start;
+  padding-left: 88px;
+  gap: 0;
+}
+.pgcg-arrows span {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--accent);
+  text-align: center;
+  flex: 1;
+}
+.pgcg-arrows span:first-child,
+.pgcg-arrows span:nth-child(3),
+.pgcg-arrows span:nth-child(5),
+.pgcg-arrows span:last-child { flex: 0.6; }
+.pgcg-down { white-space: nowrap; }
+.pgcg-sum {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-left: 88px;
+  flex-wrap: wrap;
+}
+.pgcg-sum-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--ink-light);
+}
+.pgcg-sum-box {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  padding: 0.35rem 0.75rem;
+  background: #fef2ee;
+}
+.pgcg-sum-note {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.78rem;
+  color: var(--ink-xlight);
+  font-style: italic;
+}
+.pgcg-grid {
+  display: grid;
+  grid-template-columns: repeat(7, auto);
+  justify-content: start;
+  gap: 2px 2px;
+  margin-left: 88px; /* aligns with label offset */
+}
+.pgcg-grid .pgcg-down {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--accent);
+  text-align: center;
+  padding-top: 0.2rem;
+}
+.pgcg-grid span:empty { display: block; }
+.trace-ctx {
+  background: var(--code-bg);
+  color: var(--ink-light);
+}
+.trace-adv {
+  background: #fef2ee;
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 500;
+}
+.pgcg-arrows {
+  display: flex;
+  align-items: flex-start;
+  padding-left: 88px;
+  gap: 0;
+}
+.pgcg-arrows span {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--accent);
+  text-align: center;
+  flex: 1;
+}
+.pgcg-arrows span:first-child,
+.pgcg-arrows span:nth-child(3),
+.pgcg-arrows span:nth-child(5),
+.pgcg-arrows span:last-child { flex: 0.6; }
+.pgcg-down { white-space: nowrap; }
+.pgcg-sum {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-left: 88px;
+  flex-wrap: wrap;
+}
+.pgcg-sum-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--ink-light);
+}
+.pgcg-sum-box {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  padding: 0.35rem 0.75rem;
+  background: #fef2ee;
+}
+.pgcg-sum-note {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.78rem;
+  color: var(--ink-xlight);
+  font-style: italic;
+}
+
+    /* ── SECTIONS ── */
+    section {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 3.5rem 2rem;
+      border-bottom: 1px solid var(--rule);
+    }
+    section:last-child { border-bottom: none; }
+
+    h2 {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 1.55rem;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+    }
+    h2 .num {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    p { margin-bottom: 1rem; }
+    p:last-child { margin-bottom: 0; }
+
+    /* ── FIGURE PLACEHOLDER ── */
+    .figure {
+      margin: 2rem 0;
+      border: 1px solid var(--rule);
+      background: #fff;
+    }
+    .figure-placeholder {
+      width: 100%;
+      background: var(--code-bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+      gap: 0.5rem;
+      color: var(--ink-xlight);
+    }
+    .figure-placeholder .fig-icon {
+      width: 36px;
+      height: 36px;
+      border: 1.5px solid var(--rule);
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      margin-bottom: 0.25rem;
+    }
+    .figure-placeholder span {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .figure-caption {
+      padding: 0.75rem 1rem;
+      font-size: 0.88rem;
+      color: var(--ink-light);
+      border-top: 1px solid var(--rule);
+      line-height: 1.5;
+    }
+    .figure-caption strong {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink);
+    }
+
+    /* ── ATTACK DIAGRAM ── */
+    .attack-diagram {
+      margin: 2rem 0;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      gap: 0;
+      align-items: center;
+      background: #fff;
+      border: 1px solid var(--rule);
+      padding: 2rem 1.5rem;
+    }
+    .diag-box {
+      border: 1.5px solid var(--rule);
+      padding: 0.9rem 0.75rem;
+      text-align: center;
+    }
+    .diag-box .label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-xlight);
+      margin-bottom: 0.25rem;
+    }
+    .diag-box .name {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .diag-box.attacker { border-color: var(--accent); }
+    .diag-box.monitor { border-color: #2a6099; }
+    .diag-box.agent { border-color: #3a7a50; }
+    .diag-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 0.5rem;
+      gap: 0.15rem;
+    }
+    .diag-arrow .arr-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.58rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-xlight);
+      text-align: center;
+    }
+    .diag-arrow .arr {
+      font-size: 1.1rem;
+      color: var(--ink-light);
+    }
+
+    /* ── STATS GRID ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--rule);
+      border: 1px solid var(--rule);
+      margin: 2rem 0;
+    }
+    .stat-cell {
+      background: #fff;
+      padding: 1.5rem 1.25rem;
+    }
+    .stat-cell .stat-val {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 2.4rem;
+      font-weight: 500;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 0.4rem;
+    }
+    .stat-cell .stat-desc {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: var(--ink-light);
+      line-height: 1.4;
+    }
+    .stat-cell .stat-model {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--ink-xlight);
+      margin-top: 0.25rem;
+    }
+.math-block {
+  border: 1px solid var(--rule);
+  background: #fff;
+  padding: 0.5rem 0;
+  margin: 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+}
+.math-eq {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+.math-eq:last-child { border-bottom: none; }
+.eq-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--ink-xlight);
+  width: 1.5rem;
+  flex-shrink: 0;
+  text-align: right;
+}
+.eq-body {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 2;
+  color: var(--ink);
+}
+.math-bf {
+  font-weight: 600;
+  font-style: italic;
+}
+.math-sum {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 1.4rem;
+  line-height: 1;
+  vertical-align: middle;
+  margin: 0 0.1rem;
+}
+.math-sum sub, .math-sum sup {
+  font-size: 0.6rem;
+  font-family: 'DM Mono', monospace;
+  line-height: 1.2;
+}
+.math-frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0 0.2rem;
+  line-height: 1.3;
+}
+.math-num {
+  border-bottom: 1px solid var(--ink);
+  padding: 0 0.2rem 0.1rem;
+  font-size: 0.9rem;
+}
+.math-den {
+  padding: 0.1rem 0.2rem 0;
+  font-size: 0.9rem;
+}
+.math-eval {
+  font-size: 1.3rem;
+  color: var(--ink-light);
+  margin-left: 0.25rem;
+}
+    /* ── RESULTS TABLE ── */
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.85rem;
+      margin: 1.5rem 0;
+    }
+    .results-table thead tr {
+      border-bottom: 2px solid var(--ink);
+    }
+    .results-table th {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      font-weight: 600;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--ink-light);
+    }
+    .results-table td {
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid var(--rule);
+      vertical-align: middle;
+    }
+    .results-table tr:last-child td { border-bottom: none; }
+    .results-table .group-header td {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-xlight);
+      background: var(--code-bg);
+      padding: 0.35rem 0.75rem;
+    }
+    .asr-high { color: var(--accent); font-weight: 600; }
+    .asr-mid { color: #9b6a00; }
+    .asr-low { color: var(--ink-light); }
+    .bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .bar {
+      height: 6px;
+      background: var(--accent);
+      opacity: 0.85;
+      border-radius: 1px;
+      flex-shrink: 0;
+    }
+
+    /* ── CONTRIBUTIONS ── */
+    .contrib-list {
+      list-style: none;
+      display: grid;
+      gap: 1px;
+      background: var(--rule);
+      border: 1px solid var(--rule);
+      margin: 1.5rem 0;
+    }
+    .contrib-list li {
+      background: #fff;
+      display: grid;
+      grid-template-columns: 2.5rem 1fr;
+      gap: 1rem;
+      padding: 1.1rem 1.1rem;
+      align-items: start;
+    }
+    .contrib-list li .num {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--accent);
+      padding-top: 0.15rem;
+    }
+    .contrib-list li p { margin: 0; font-size: 0.97rem; }
+
+    /* ── CODE / MONO ── */
+    code {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78em;
+      background: var(--code-bg);
+      padding: 0.1em 0.35em;
+      border-radius: 2px;
+      color: var(--accent);
+    }
+
+    /* ── CITATION ── */
+    .citation-box {
+      background: var(--code-bg);
+      border: 1px solid var(--rule);
+      padding: 1.25rem 1.25rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      line-height: 1.6;
+      color: var(--ink-light);
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 2.5rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      border-top: 1px solid var(--rule);
+    }
+    footer p {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.8rem;
+      color: var(--ink-xlight);
+      margin: 0;
+    }
+
+.diagram {
+  margin: 2rem 0;
+  border: 1px solid var(--rule);
+  background: var(--code-bg);
+}
+
+.flow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 1.5rem 1.25rem;
+}
+
+    .flow-node {
+      border: 1.5px solid var(--rule);
+      padding: 0.6rem 1rem;
+      text-align: center;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+    .flow-node small {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 400;
+      color: var(--ink-xlight);
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.04em;
+    }
+    .flow-node.attacker { border-color: var(--accent); color: var(--accent); }
+    .flow-node.agent    { border-color: #3a7a50; color: #3a7a50; }
+    .flow-node.monitor  { border-color: #2a6099; color: #2a6099; }
+    .flow-arrow { font-size: 1.1rem; color: var(--ink-xlight); }
+
+  .diagram-caption {
+    padding: 0.75rem 1rem;
+    font-size: 0.82rem;
+    color: var(--ink-light);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+    border-top: 1px solid var(--rule);
+  }
+.authors a {
+  text-decoration: none;   /* no underline normally */
+  color: inherit;          /* keep same text color */
+}
+
+.authors a:hover {
+  text-decoration: underline;
+}
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      .attack-diagram { grid-template-columns: 1fr; gap: 0.5rem; }
+      .diag-arrow .arr { transform: rotate(90deg); }
+      .stats-grid { grid-template-columns: 1fr; }
+      nav ul { gap: 1rem; }
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .hero > * {
+      animation: fadeUp 0.5s ease both;
+    }
+    .hero .venue-tag { animation-delay: 0.05s; }
+    .hero h1         { animation-delay: 0.12s; }
+    .hero .authors   { animation-delay: 0.18s; }
+    .hero .affil     { animation-delay: 0.22s; }
+    .hero .buttons   { animation-delay: 0.28s; }
+    .hero .tldr      { animation-delay: 0.34s; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="inner">
+    <span class="logo">Agent-as-a-Proxy</span>
+    <ul>
+      <li><a href="#intro">Intro</a></li>
+      <li><a href="#agent-as-a-proxy">Agent-as-a-Proxy Attack</a></li>
+      <li><a href="#parallel-gcg">Parallel-GCG</a></li>
+      <li><a href="#results">Results</a></li>
+      <li><a href="#citation">Citation</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="venue-tag">Preprint · February 2026</div>
+  <h1>Bypassing AI Control Protocols via <em>Agent-as-a-Proxy</em> Attacks</h1>
+  <p class="authors">
+    <a href="https://ceferisbarov.github.io/" target="_blank" rel="noopener noreferrer">
+      Jafar Isbarov
+    </a>
+    &nbsp;&middot;&nbsp;
+    <a href="https://kantarcioglu.net/" target="_blank" rel="noopener noreferrer">
+      Murat Kantarcioglu
+    </a>
+  </p>
+  <p class="affil">Department of Computer Science, Virginia Tech</p>
+  <div class="buttons">
+    <a class="btn primary" href="https://arxiv.org/abs/2602.05066" target="_blank">arXiv</a>
+    <a class="btn code" href="https://github.com/ceferisbarov/agent-as-a-proxy-attack">Code</a>
+    <a class="btn" href="#citation">Cite</a>
+  </div>
+  <div class="tldr">
+    <strong>TL;DR</strong>
+    We show that monitoring-based defenses for AI agents — including state-of-the-art hybrid monitors — can be systematically bypassed by weaponizing the agent itself as a delivery mechanism for adversarial strings that fool the monitor. Model scale provides no protection.
+  </div>
+</header>
+
+<!-- INTRO -->
+<section id="intro">
+  <h2><span class="num">01</span> Introduction</h2>
+  <p>
+    AI agents are increasingly trusted with complex, multi-step workflows: managing financial transactions, interacting with third-party APIs, and executing code autonomously. This autonomy, however, exposes a fundamental security gap: because agents process untrusted external content — emails, web pages, RAG results — they are susceptible to <em>Indirect Prompt Injection (IPI)</em> attacks, where malicious instructions embedded in the environment hijack the agent's behavior.
+  </p>
+  <p>
+    The security community has responded with <strong>monitoring-based defenses</strong>. The prevailing approach, exemplified by systems like <a href="https://arxiv.org/abs/2505.03574" target="_blank">LlamaFirewall</a>, uses a secondary trusted model to jointly scrutinize the agent's Chain-of-Thought (CoT), tool calls, and tool outputs. The assumption: a comprehensive view of the agent's internal reasoning provides a strong defense.
+  </p>
+  <p>
+    We challenge this assumption. By forcing the monitor to process the agent's own outputs, defenders inadvertently create a direct channel through which attackers can manipulate the monitor. We show that this is not a theoretical concern — it is practically exploitable at scale.
+  </p>
+
+  <!-- <div class="attack-diagram">
+    <div class="diag-box attacker">
+      <div class="label">Threat Actor</div>
+      <div class="name">Attacker</div>
+    </div>
+    <div class="diag-arrow">
+      <div class="arr-label">injects into<br>web content</div>
+      <div class="arr">→</div>
+    </div>
+    <div class="diag-box agent">
+      <div class="label">Victim</div>
+      <div class="name">AI Agent</div>
+    </div>
+    <div class="diag-arrow">
+      <div class="arr-label">repeats string<br>in CoT + actions</div>
+      <div class="arr">→</div>
+    </div>
+    <div class="diag-box monitor">
+      <div class="label">Defense</div>
+      <div class="name">Monitor</div>
+    </div>
+  </div> -->
+
+</section>
+
+<!-- METHOD -->
+<section id="agent-as-a-proxy">
+  <h2><span class="num">02</span> Agent-as-a-Proxy Framework</h2>
+  <p>
+    A standard IPI attack tries to mislead the <em>agent</em>. Our approach goes further: the adversarial string is designed not only to hijack the agent's behavior, but to manipulate the <em>monitor</em> that observes the agent. By coercing the agent to repeat an optimized adversarial string within its chain-of-thought reasoning and tool call parameters, we force the monitor to classify a malicious trajectory as safe.
+  </p>
+  <p>
+    Crucially, the agent need not "know" it is participating in an attack. It simply repeats the injected string — a natural consequence of tasks like appending text to a message or including a string in a transaction field. The monitor, seeing the agent faithfully echo this string across multiple contexts, is manipulated at the token level.
+  </p>
+  
+    <div class="diagram">
+    <div class="flow">
+      <div class="flow-node attacker">Attacker<br><small>embeds IPI</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node agent">Agent<br><small>reads + repeats</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node monitor">Monitor<br><small>sees adversarial string</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:#4ade80;color:#4ade80">SAFE ✓<br><small>bypassed</small></div>
+    </div>
+    <p class="diagram-caption">The agent acts as an unwitting proxy, delivering adversarial strings directly into the monitor's context.</p>
+  </div>
+</section>
+  <section id="parallel-gcg">
+  <h2><span class="num">03</span> Parallel-GCG</h2>
+
+  <p>
+    Standard <a href="https://arxiv.org/abs/2307.15043" target="_blank">GCG</a> optimizes an adversarial string for a single insertion point. In agentic contexts, the monitor observes the adversarial string repeated across <em>K</em> distinct temporal contexts — a reasoning step, a function argument, an execution log. A string optimized in isolation may fail when re-contextualized.
+  </p>
+  <p>
+    Parallel-GCG addresses this by optimizing a single adversarial string jointly across all <em>K</em> insertion sites. Formally, given a fixed set of context slices {<em>c</em><sub>0</sub>, ..., <em>c<sub>K</sub></em>} extracted from a reference agent trace, we construct a composite sequence and minimize a joint loss over all occurrences:
+  </p>
+<p>
+  Given a static context <em>c</em>, standard GCG finds an adversarial string <strong>a</strong> by minimizing the negative log-likelihood of a target response <em>y</em>:
+</p>
+<div class="eq">ℒ(c ⊕ <strong>a</strong>; y) = −∑<sub>i</sub> log P(y<sub>i</sub> | c, <strong>a</strong>, y<sub>&lt;i</sub>)</div>
+<p>
+  In agentic settings, the monitor sees <strong>a</strong> repeated across <em>K</em> sites in the trajectory — reasoning steps, tool arguments, execution logs. A string optimized for one site may fail in another context. Parallel-GCG addresses this by constructing a composite trace that interleaves <strong>a</strong> between fixed context slices {c<sub>0</sub>, …, c<sub>K</sub>}:
+</p>
+<div class="eq">S(<strong>a</strong>) = c<sub>0</sub> ⊕ <strong>a</strong> ⊕ c<sub>1</sub> ⊕ <strong>a</strong> ⊕ · · · ⊕ c<sub>K−1</sub> ⊕ <strong>a</strong> ⊕ c<sub>K</sub></div>
+<p>
+  We then minimize the loss over this full trace rather than a single insertion. By the chain rule, the gradient accumulates contributions from every site where <strong>a</strong> appears:
+</p>
+<div class="eq">∇<sub><strong>E</strong></sub> ℒ(S(<strong>a</strong>); y) = ∑<sub>k=1</sub><sup>K</sup> ∂ℒ / ∂<strong>E</strong><sup>(k)</sup></div>
+<p>
+  This means each token update to <strong>a</strong> is informed by all contexts simultaneously, producing a string that reliably deceives the monitor regardless of where it appears in the trajectory.
+</p>
+  <p>
+    The coordinate gradient at each token position aggregates contributions from all <em>K</em> insertion sites, ensuring the optimized string remains effective regardless of its local context in the trajectory.
+  </p>
+  <p>
+    For multi-layer defenses like LlamaFirewall (PromptGuard 2 + AlignmentCheck), we employ <strong>multi-objective GCG</strong>, simultaneously minimizing loss against both the classifier and the LLM-based monitor.
+  </p>
+<div class="pgcg-diagram">
+  <!-- Row 1 -->
+  <div class="pgcg-label">Agent trace</div>
+
+  <!-- Row 2: Empty spans align with 'c' cells, arrows align with 'a' cells -->
+  <span></span> <!-- Space for label -->
+<div class="pgcg-grid">
+  <span class="trace-ctx">c₀</span>
+  <span class="trace-adv">a</span>
+  <span class="trace-ctx">c₁</span>
+  <span class="trace-adv">a</span>
+  <span class="trace-ctx">c₂</span>
+  <span class="trace-adv">a</span>
+  <span class="trace-ctx">c₃</span>
+
+  <span></span>
+  <span class="pgcg-down">↓ site 1</span>
+  <span></span>
+  <span class="pgcg-down">↓ site 2</span>
+  <span></span>
+  <span class="pgcg-down">↓ site 3</span>
+  <span></span>
+</div>
+  <!-- Row 3 -->
+  <div class="pgcg-sum">
+    <span class="pgcg-sum-label">Σ gradients →</span>
+    <span class="pgcg-sum-box">update <strong>a</strong></span>
+    <span class="pgcg-sum-note">one string, robust across all contexts</span>
+  </div>
+</div>
+</section>
+
+<!-- RESULTS -->
+<section id="results">
+  <h2><span class="num">03</span> Results</h2>
+  <p>
+    We evaluate on the <a href="https://openreview.net/forum?id=m1YYAQjO3w" target="_blank">AgentDojo</a> benchmark (v1.2.1), using the Slack suite (89 samples after filtering agent-level failures). We test three monitoring protocols — <strong>AlignmentCheck</strong>, <strong>PromptGuard 2 + AlignmentCheck</strong>, and <strong>Extract-and-Evaluate</strong> — across multiple open-source monitoring LLMs.
+  </p>
+
+  <div class="stats-grid">
+    <div class="stat-cell">
+      <div class="stat-val">&gt;90%</div>
+      <div class="stat-desc">Attack success rate against AlignmentCheck</div>
+      <div class="stat-model">Mistral-7B &amp; Qwen2.5-7B monitors</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-val">99%</div>
+      <div class="stat-desc">ASR@5 against PromptGuard 2 + AlignmentCheck</div>
+      <div class="stat-model">Mistral-7B monitor</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-val">60%</div>
+      <div class="stat-desc">Llama 3.1 70B bypassing Qwen2.5-72B monitor</div>
+      <div class="stat-model">No capability gap required</div>
+    </div>
+  </div>
+
+  <table class="results-table">
+    <thead>
+      <tr>
+        <th>Monitor</th>
+        <th>Model</th>
+        <th>Baseline</th>
+        <th>ASR@1</th>
+        <th>ASR@5</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="group-header"><td colspan="6">AlignmentCheck</td></tr>
+      <tr>
+        <td></td><td><code>Llama-3.1-8B</code></td>
+        <td class="asr-low">0.0</td><td>42.3</td>
+        <td class="asr-mid">42.3</td>
+      </tr>
+      <tr>
+        <td></td><td><code>Mistral-7B</code></td>
+        <td class="asr-low">14.4</td><td>90.2</td>
+        <td class="asr-high">93.3</td>
+      </tr>
+      <tr>
+        <td></td><td><code>Qwen2.5-7B</code></td>
+        <td class="asr-low">2.1</td><td>62.5</td>
+        <td class="asr-high">90.7</td>
+      </tr>
+      <tr class="group-header"><td colspan="6">PromptGuard 2 + AlignmentCheck</td></tr>
+      <tr>
+        <td></td><td><code>Llama-3.1-8B</code></td>
+        <td class="asr-low">1.0</td><td>44.3</td>
+        <td class="asr-mid">76.3</td>
+      </tr>
+      <tr>
+        <td></td><td><code>Mistral-7B</code></td>
+        <td class="asr-low">12.4</td><td>86.4</td>
+        <td class="asr-high">99.0</td>
+      </tr>
+      <tr>
+        <td></td><td><code>Qwen2.5-7B</code></td>
+        <td class="asr-low">2.1</td><td>61.2</td>
+        <td class="asr-high">86.6</td>
+      </tr>
+      <tr class="group-header"><td colspan="6">Extract-and-Evaluate</td></tr>
+      <tr>
+        <td></td><td><code>Llama-3.1-8B</code></td>
+        <td class="asr-low">0.0</td><td>11.2</td>
+        <td class="asr-mid">54.7</td>
+      </tr>
+      <tr>
+        <td></td><td><code>Mistral-7B</code></td>
+        <td class="asr-low">10.3</td><td>68.2</td>
+        <td class="asr-high">95.5</td>
+      </tr>
+      <tr>
+        <td></td><td><code>Qwen2.5-7B</code></td>
+        <td class="asr-low">2.3</td><td>10.5</td>
+        <td class="asr-mid">37.2</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3 style="font-family:'EB Garamond',serif; font-size:1.1rem; font-weight:500; margin: 2rem 0 0.6rem;">The Hybrid Monitoring Paradox</h3>
+  <p>
+    A counterintuitive finding: while hybrid monitoring (CoT + actions) is <em>more robust</em> than CoT-only monitoring against static baseline attacks, it is <em>more vulnerable</em> to our adaptive attacks. By monitoring tool calls, hybrid monitors are exposed to a larger surface of attacker-controlled content. This is a structural weakness, not a failure of any particular model.
+  </p>
+
+  <h3 style="font-family:'EB Garamond',serif; font-size:1.1rem; font-weight:500; margin: 2rem 0 0.6rem;">Model Scale Provides No Immunity</h3>
+  <p>
+    We demonstrate that <code>GPT-4o mini</code> (46% ASR@5) and <code>Llama 3.1 70B</code> (60% ASR@5) can both be used to successfully bypass a <code>Qwen2.5-72B</code> monitor — a model with comparable capabilities. The attack does not require the agent to be smarter or larger than the monitor; it only requires that the agent faithfully repeat the optimized string. Scaling up the monitoring model cannot resolve a structural architectural vulnerability.
+  </p>
+
+</section>
+
+<!-- CONTRIBUTIONS -->
+<section>
+  <h2><span class="num">04</span> Contributions</h2>
+  <ul class="contrib-list">
+    <li>
+      <span class="num">C1</span>
+      <p>We propose the <strong>Agent-as-a-Proxy</strong> attack framework, which utilizes the victim agent to deliver adversarial attack strings directly to the monitoring system — without the agent's awareness.</p>
+    </li>
+    <li>
+      <span class="num">C2</span>
+      <p>We introduce <strong>Parallel-GCG</strong>, a gradient-based optimization algorithm that ensures adversarial strings remain effective when repeated across agent reasoning and tool-use contexts.</p>
+    </li>
+    <li>
+      <span class="num">C3</span>
+      <p>We uncover a <strong>paradox in hybrid monitoring</strong>: the very feature that makes it stronger against static attacks — observing both CoT and tool calls — creates a larger attack surface for adaptive adversaries.</p>
+    </li>
+    <li>
+      <span class="num">C4</span>
+      <p>We provide evidence that <strong>model scale offers no immunity</strong>. Agents with comparable capabilities to the monitor can reliably deceive frontier-scale monitoring models, challenging the scalable oversight hypothesis in the agentic domain.</p>
+    </li>
+  </ul>
+</section>
+
+<!-- PAPER & CITATION -->
+<section id="citation">
+  <h2><span class="num">06</span> Citation</h2>
+  <p>If you find this work useful, please cite:</p>
+  <div class="citation-box">@article{isbarov2026agentproxy,
+  title   = {Bypassing AI Control Protocols via Agent-as-a-Proxy Attacks},
+  author  = {Isbarov, Jafar and Kantarcioglu, Murat},
+  journal = {arXiv preprint arXiv:2602.05066},
+  year    = {2026}
+}</div>
+</section>
+
+<footer>
+  <p>Virginia Tech · Department of Computer Science</p>
+  <p>Supported by NSF, ARL/Army Research Office, and the Commonwealth Cyber Initiative</p>
+</footer>
+
+</body>
+</html>
